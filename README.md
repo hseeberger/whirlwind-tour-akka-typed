@@ -1,6 +1,46 @@
-# whirlwind-tour-akka-typed #
+# Whirlwind Tour of Akka Typed #
 
-Welcome to whirlwind-tour-akka-typed!
+This demo project shows many of the features of Akka Typed, core ones as well as higher-level ones
+like for Akka Persistence or Akka Cluster.
+
+The use case is a simple user repository. The architecture is based upon Event Sourcing and CQRS
+with a strictly consistent (CP) write side and an eventually consistent (AP) in-memory read model.
+
+The below diagram shows the main components, most of which are actors.
+
+```
+                                    HTTP
++------------------------------------o---------------------------------+
+|                                    |                                 |
+|                                    |                                 |
+|               AddUser              |                                 |
+|               RemoveUser  +-----------------+    GetUsers            |
+|              +----------->|       Api       |<-----------+           |
+|              |            +-----------------+            |           |
+|              v                                           v           |
+|     +-----------------+             Changed     +-----------------+  |
+|     | UserRepository  |            +----------->|    UserView     |  |
+|     +-----------------+            |            +-----------------+  |
+|              |                     |                                 |
+|              |            +-----------------+                        |
+|              |            |      DData      |                        |
+|              |            +-----------------+                        |
+|    UserAdded |                     ^                                 |
+|  UserRemoved |                     |            +-----------------+  |
+|              |                     +------------| UserProjection  |  |
+|              |                      Update      +-----------------+  |
+|              |                                           ^           |
+|              |                                           |           |
++--------------+-------------------------------------------+-----------+
+               v                                           |
+      +-----------------+            Source[User.Event, _] |
+      |    EventLog     |----------------------------------+
+      +-----------------+
+```
+
+In order to run the system:
+- make sure to have Cassandra up and running properly, e.g. via `docker-compose up -d cassandra`
+- use correct configuration settings, e.g. by using the comman aliases `r0` and `r1` from within sbt  
 
 ## Contribution policy ##
 

@@ -1,0 +1,17 @@
+version: '2'
+
+services:
+  wtat:
+    image: hseeberger/whirlwind-tour-akka-typed:latest
+    ports:
+      - 8000
+    command: [
+      "-Dcassandra-journal.contact-points.0=cassandra:9042",
+      "-Dcassandra-snapshot-store.contact-points.0=cassandra:9042"
+    ]
+    shm_size: 256m
+
+  cassandra:
+    image: cassandra:3.11.1
+    ports:
+      - "9042:9042"
