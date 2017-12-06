@@ -27,11 +27,14 @@ object Main {
 
     private implicit val mat: Materializer = ActorMaterializer()
 
+    private val userRepository = context.spawn(UserRepository(), UserRepository.Name)
+
     private val api = {
       import config.api._
-      context.spawn(Api(address, port), Api.Name)
+      context.spawn(Api(address, port, userRepository, askTimeout), Api.Name)
     }
 
+    context.watch(userRepository)
     context.watch(api)
     log.info(s"${context.system.name} up and running")
 

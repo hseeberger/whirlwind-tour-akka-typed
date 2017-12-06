@@ -16,16 +16,20 @@
 
 package de.heikoseeberger.wtat
 
-import akka.actor.ActorSystem
+import akka.actor.{ ActorSystem, Scheduler }
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
+import akka.http.scaladsl.model.StatusCodes.{ Conflict, Created, NoContent, NotFound }
 import akka.http.scaladsl.server.{ Directives, Route }
-import akka.typed.scaladsl.Actor
 import akka.stream.Materializer
-import akka.typed.Behavior
+import akka.typed.{ ActorRef, Behavior }
+import akka.typed.scaladsl.Actor
+import akka.typed.scaladsl.AskPattern.Askable
+import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import java.net.InetSocketAddress
 import org.apache.logging.log4j.scala.Logging
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{ Failure, Success }
 
 object Api extends Logging {
@@ -36,7 +40,10 @@ object Api extends Logging {
 
   final val Name = "api"
 
-  def apply(address: String, port: Int)(implicit mat: Materializer): Behavior[Command] =
+  def apply(address: String,
+            port: Int,
+            userRepository: ActorRef[UserRepository.Command],
+            askTimeout: FiniteDuration)(implicit mat: Materializer): Behavior[Command] =
     Actor.deferred { context =>
       import akka.typed.scaladsl.adapter._
       import context.executionContext
@@ -44,7 +51,7 @@ object Api extends Logging {
 
       val self = context.self
       Http()
-        .bindAndHandle(route, address, port)
+        .bindAndHandle(route(userRepository)(askTimeout, context.system.scheduler), address, port)
         .onComplete {
           case Failure(_)                      => self ! HandleBindFailure
           case Success(ServerBinding(address)) => self ! HandleBound(address)
@@ -61,7 +68,8 @@ object Api extends Logging {
       }
     }
 
-  def route: Route = {
+  def route(userRepository: ActorRef[UserRepository.Command])(implicit askTimeout: Timeout,
+                                                              scheduler: Scheduler): Route = {
     import Directives._
     import ErrorAccumulatingCirceSupport._
     import io.circe.generic.auto._
@@ -75,16 +83,20 @@ object Api extends Logging {
       } ~
       post {
         entity(as[User]) { user =>
-          complete {
-            s"POST $user received"
+          import UserRepository._
+          onSuccess(userRepository ? addUser(user)) {
+            case UsernameTaken(_) => complete(Conflict)
+            case UserAdded(_)     => complete(Created)
           }
         }
       }
     } ~
     path(Segment) { username =>
       delete {
-        complete {
-          s"DELETE $username received"
+        import UserRepository._
+        onSuccess(userRepository ? removeUser(username)) {
+          case UsernameUnknown(_) => complete(NotFound)
+          case UserRemoved(_)     => complete(NoContent)
         }
       }
     }
