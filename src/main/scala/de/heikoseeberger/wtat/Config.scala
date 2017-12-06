@@ -14,18 +14,10 @@
  * limitations under the License.
  */
 
-package de.heikoseeberger
+package de.heikoseeberger.wtat
 
-import cats.data.NonEmptyList
-
-package object wtat {
-
-  type Traversable[+A] = scala.collection.immutable.Traversable[A]
-  type Iterable[+A]    = scala.collection.immutable.Iterable[A]
-  type Seq[+A]         = scala.collection.immutable.Seq[A]
-  type IndexedSeq[+A]  = scala.collection.immutable.IndexedSeq[A]
-
-  final implicit class NonEmptyListOps[A](val as: NonEmptyList[A]) extends AnyVal {
-    def fail: Nothing = throw new Exception(as.toList.mkString(", "))
-  }
+object Config {
+  final case class Api(address: String, port: Int)
 }
+
+final case class Config(api: Config.Api)
