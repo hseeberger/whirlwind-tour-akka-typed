@@ -17,7 +17,11 @@
 package de.heikoseeberger.wtat
 
 import akka.actor.{ Actor, ActorLogging, ActorSystem, Props, Terminated }
+import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
+import akka.persistence.query.PersistenceQuery
 import akka.stream.{ ActorMaterializer, Materializer }
+import akka.typed.SupervisorStrategy.restartWithBackoff
+import akka.typed.scaladsl.Actor.supervise
 import pureconfig.loadConfigOrThrow
 
 object Main {
@@ -29,12 +33,29 @@ object Main {
 
     private val userRepository = context.spawn(UserRepository(), UserRepository.Name)
 
+    private val userView = context.spawn(UserView(), UserView.Name)
+
+    private val userProjection = {
+      import config.userProjection._
+      val readJournal =
+        PersistenceQuery(context.system)
+          .readJournalFor[CassandraReadJournal](CassandraReadJournal.Identifier)
+      val userProjection =
+        supervise(UserProjection(readJournal, userView, askTimeout))
+          .onFailure[UserProjection.EventStreamCompleteException](
+            restartWithBackoff(minBackoff, maxBackoff, 0)
+          )
+      context.spawn(userProjection, UserProjection.Name)
+    }
+
     private val api = {
       import config.api._
-      context.spawn(Api(address, port, userRepository, askTimeout), Api.Name)
+      context.spawn(Api(address, port, userRepository, userView, askTimeout), Api.Name)
     }
 
     context.watch(userRepository)
+    context.watch(userView)
+    context.watch(userProjection)
     context.watch(api)
     log.info(s"${context.system.name} up and running")
 

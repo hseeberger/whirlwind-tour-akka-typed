@@ -20,6 +20,10 @@ import scala.concurrent.duration.FiniteDuration
 
 object Config {
   final case class Api(address: String, port: Int, askTimeout: FiniteDuration)
+
+  final case class UserProjection(askTimeout: FiniteDuration,
+                                  minBackoff: FiniteDuration,
+                                  maxBackoff: FiniteDuration)
 }
 
-final case class Config(api: Config.Api)
+final case class Config(api: Config.Api, userProjection: Config.UserProjection)

@@ -22,9 +22,9 @@ import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model.StatusCodes.{ Conflict, Created, NoContent, NotFound }
 import akka.http.scaladsl.server.{ Directives, Route }
 import akka.stream.Materializer
-import akka.typed.{ ActorRef, Behavior }
 import akka.typed.scaladsl.Actor
 import akka.typed.scaladsl.AskPattern.Askable
+import akka.typed.{ ActorRef, Behavior }
 import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import java.net.InetSocketAddress
@@ -43,6 +43,7 @@ object Api extends Logging {
   def apply(address: String,
             port: Int,
             userRepository: ActorRef[UserRepository.Command],
+            userView: ActorRef[UserView.Command],
             askTimeout: FiniteDuration)(implicit mat: Materializer): Behavior[Command] =
     Actor.deferred { context =>
       import akka.typed.scaladsl.adapter._
@@ -51,7 +52,9 @@ object Api extends Logging {
 
       val self = context.self
       Http()
-        .bindAndHandle(route(userRepository)(askTimeout, context.system.scheduler), address, port)
+        .bindAndHandle(route(userRepository, userView)(askTimeout, context.system.scheduler),
+                       address,
+                       port)
         .onComplete {
           case Failure(_)                      => self ! HandleBindFailure
           case Success(ServerBinding(address)) => self ! HandleBound(address)
@@ -68,8 +71,10 @@ object Api extends Logging {
       }
     }
 
-  def route(userRepository: ActorRef[UserRepository.Command])(implicit askTimeout: Timeout,
-                                                              scheduler: Scheduler): Route = {
+  def route(
+      userRepository: ActorRef[UserRepository.Command],
+      userView: ActorRef[UserView.Command]
+  )(implicit askTimeout: Timeout, scheduler: Scheduler): Route = {
     import Directives._
     import ErrorAccumulatingCirceSupport._
     import io.circe.generic.auto._
@@ -78,7 +83,8 @@ object Api extends Logging {
     pathEndOrSingleSlash {
       get {
         complete {
-          "GET received"
+          import UserView._
+          (userView ? GetUsers).mapTo[Users]
         }
       } ~
       post {
