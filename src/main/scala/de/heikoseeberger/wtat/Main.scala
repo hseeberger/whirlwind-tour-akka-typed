@@ -35,14 +35,14 @@ object Main {
 
     private implicit val mat: Materializer = ActorMaterializer()
 
-    private val userRepository = {
-      val settings = ClusterSingletonSettings(context.system.toTyped)
+    private val clusterSingletonSettings = ClusterSingletonSettings(context.system.toTyped)
+
+    private val userRepository =
       ClusterSingleton(context.system.toTyped).spawn(UserRepository(),
                                                      UserRepository.Name,
                                                      akka.typed.Props.empty,
-                                                     settings,
+                                                     clusterSingletonSettings,
                                                      UserRepository.Stop)
-    }
 
     private val userView = context.spawn(UserView(), UserView.Name)
 
@@ -56,7 +56,11 @@ object Main {
           .onFailure[UserProjection.EventStreamCompleteException](
             restartWithBackoff(minBackoff, maxBackoff, 0)
           )
-      context.spawn(userProjection, UserProjection.Name)
+      ClusterSingleton(context.system.toTyped).spawn(userProjection,
+                                                     UserProjection.Name,
+                                                     akka.typed.Props.empty,
+                                                     clusterSingletonSettings,
+                                                     UserProjection.Stop)
     }
 
     private val api = {

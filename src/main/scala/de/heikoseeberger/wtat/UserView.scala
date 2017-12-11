@@ -16,11 +16,10 @@
 
 package de.heikoseeberger.wtat
 
-import akka.Done
+import akka.cluster.ddata.ORSet
+import akka.typed.cluster.ddata.scaladsl.{ DistributedData, Replicator }
 import akka.typed.scaladsl.Actor
 import akka.typed.{ ActorRef, Behavior }
-import cats.instances.string._
-import cats.syntax.eq._
 import org.apache.logging.log4j.scala.Logging
 
 object UserView extends Logging {
@@ -30,49 +29,26 @@ object UserView extends Logging {
   final case class GetUsers(replyTo: ActorRef[Users]) extends Command
   final case class Users(users: Set[User])
 
-  final case class GetLastSeqNo(replyTo: ActorRef[LastSeqNo]) extends Command
-  final case class LastSeqNo(nextSeqNo: Long)
-
-  final case class AddUser(user: User, seqNo: Long, replyTo: ActorRef[Done]) extends Command
-  final case class RemoveUser(username: String, seqNo: Long, replyTo: ActorRef[Done])
-      extends Command
+  private final case class UsersChanged(users: Set[User]) extends Command
 
   final val Name = "user-view"
 
-  def apply(users: Set[User] = Set.empty, lastSeqNo: Long = 0): Behavior[Command] =
-    Actor.immutable {
-      case (_, GetUsers(replyTo)) =>
-        replyTo ! Users(users)
-        Actor.same
-
-      case (_, GetLastSeqNo(replyTo)) =>
-        replyTo ! LastSeqNo(lastSeqNo)
-        Actor.same
-
-      case (_, AddUser(user @ User(username, _), seqNo, replyTo)) =>
-        if (seqNo != lastSeqNo + 1) {
-          logger.error(s"Resetting, because seqNo $seqNo not equal lastSeqNo $lastSeqNo + 1!")
-          UserView()
-        } else {
-          logger.debug(s"User with username $username added")
-          replyTo ! Done
-          UserView(users + user, seqNo)
+  def apply(users: Set[User] = Set.empty): Behavior[Command] =
+    Actor.deferred { context =>
+      val changedAdapter =
+        context.spawnAdapter { (changed: Replicator.Changed[ORSet[User]]) =>
+          UsersChanged(changed.dataValue.elements)
         }
+      val replicator = DistributedData(context.system).replicator
+      replicator ! Replicator.Subscribe(UserProjection.usersKey, changedAdapter)
 
-      case (_, RemoveUser(username, seqNo, replyTo)) =>
-        if (seqNo != lastSeqNo + 1) {
-          logger.error(s"Resetting, because seqNo $seqNo not equal lastSeqNo $lastSeqNo + 1!")
-          UserView()
-        } else {
-          logger.debug(s"User with username $username removed")
-          replyTo ! Done
-          UserView(users.filterNot(_.username.value === username), seqNo)
-        }
+      Actor.immutable {
+        case (_, GetUsers(replyTo)) =>
+          replyTo ! Users(users)
+          Actor.same
+
+        case (_, UsersChanged(users)) =>
+          UserView(users)
+      }
     }
-
-  def addUser(user: User, seqNo: Long)(replyTo: ActorRef[Done]): AddUser =
-    AddUser(user, seqNo, replyTo)
-
-  def removeUser(username: String, seqNo: Long)(replyTo: ActorRef[Done]): RemoveUser =
-    RemoveUser(username, seqNo, replyTo)
 }
