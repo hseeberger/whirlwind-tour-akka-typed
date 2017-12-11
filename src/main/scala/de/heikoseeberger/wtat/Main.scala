@@ -17,10 +17,14 @@
 package de.heikoseeberger.wtat
 
 import akka.actor.{ Actor, ActorLogging, ActorSystem, Props, Terminated }
+import akka.cluster.Cluster
+import akka.cluster.bootstrap.ClusterBootstrap
+import akka.cluster.http.management.ClusterHttpManagement
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.query.PersistenceQuery
 import akka.stream.{ ActorMaterializer, Materializer }
 import akka.typed.SupervisorStrategy.restartWithBackoff
+import akka.typed.cluster.{ ClusterSingleton, ClusterSingletonSettings }
 import akka.typed.scaladsl.Actor.supervise
 import pureconfig.loadConfigOrThrow
 
@@ -31,7 +35,14 @@ object Main {
 
     private implicit val mat: Materializer = ActorMaterializer()
 
-    private val userRepository = context.spawn(UserRepository(), UserRepository.Name)
+    private val userRepository = {
+      val settings = ClusterSingletonSettings(context.system.toTyped)
+      ClusterSingleton(context.system.toTyped).spawn(UserRepository(),
+                                                     UserRepository.Name,
+                                                     akka.typed.Props.empty,
+                                                     settings,
+                                                     UserRepository.Stop)
+    }
 
     private val userView = context.spawn(UserView(), UserView.Name)
 
@@ -68,8 +79,16 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     sys.props += "log4j2.contextSelector" -> "org.apache.logging.log4j.core.async.AsyncLoggerContextSelector"
-    val config = loadConfigOrThrow[Config]("wtat")
-    val system = ActorSystem("wtat")
-    system.actorOf(Props(new Root(config)), "root")
+
+    val config  = loadConfigOrThrow[Config]("wtat")
+    val system  = ActorSystem("wtat")
+    val cluster = Cluster(system)
+
+    if (config.useClusterBootstrap) {
+      ClusterHttpManagement(cluster).start()
+      ClusterBootstrap(system).start()
+    }
+
+    cluster.registerOnMemberUp(system.actorOf(Props(new Root(config)), "root"))
   }
 }

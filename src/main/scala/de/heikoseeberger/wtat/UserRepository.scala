@@ -20,22 +20,34 @@ import akka.typed.persistence.scaladsl.PersistentActor
 import akka.typed.persistence.scaladsl.PersistentActor.{ CommandHandler, Effect }
 import akka.typed.{ ActorRef, Behavior }
 import eu.timepit.refined.api.Refined
+import java.io.{ Serializable => JavaSerializable }
 import org.apache.logging.log4j.scala.Logging
 
 object UserRepository extends Logging {
 
+  sealed trait Serializable extends JavaSerializable
+
   sealed trait Command
   sealed trait Event
 
-  final case class AddUser(user: User, replyTo: ActorRef[AddUserReply]) extends Command
+  final case class AddUser(user: User, replyTo: ActorRef[AddUserReply])
+      extends Command
+      with Serializable
   sealed trait AddUserReply
-  final case class UsernameTaken(username: String) extends AddUserReply
-  final case class UserAdded(user: User)           extends AddUserReply with Event
+  final case class UsernameTaken(username: String) extends AddUserReply with Serializable
+  final case class UserAdded(user: User)           extends AddUserReply with Event with Serializable
 
-  final case class RemoveUser(username: String, replyTo: ActorRef[RemoveUserReply]) extends Command
+  final case class RemoveUser(username: String, replyTo: ActorRef[RemoveUserReply])
+      extends Command
+      with Serializable
   sealed trait RemoveUserReply
-  final case class UsernameUnknown(username: String) extends RemoveUserReply
-  final case class UserRemoved(username: String)     extends RemoveUserReply with Event
+  final case class UsernameUnknown(username: String) extends RemoveUserReply with Serializable
+  final case class UserRemoved(username: String)
+      extends RemoveUserReply
+      with Event
+      with Serializable
+
+  final case object Stop extends Command
 
   final case class State(usernames: Set[String] = Set.empty)
 
@@ -81,6 +93,9 @@ object UserRepository extends Logging {
               replyTo ! userRemoved
             }
         }
+
+      case (_, _, Stop) =>
+        Effect.stop
     }
 
   private def eventHandler(state: State, event: Event) =

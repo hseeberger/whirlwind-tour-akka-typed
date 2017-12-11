@@ -34,7 +34,6 @@ object UserView extends Logging {
   final case class LastSeqNo(nextSeqNo: Long)
 
   final case class AddUser(user: User, seqNo: Long, replyTo: ActorRef[Done]) extends Command
-
   final case class RemoveUser(username: String, seqNo: Long, replyTo: ActorRef[Done])
       extends Command
 
@@ -51,23 +50,23 @@ object UserView extends Logging {
         Actor.same
 
       case (_, AddUser(user @ User(username, _), seqNo, replyTo)) =>
-        if (seqNo <= lastSeqNo) {
-          logger.error(s"Resetting, because seqNo $seqNo less or equal lastSeqNo $lastSeqNo!")
+        if (seqNo != lastSeqNo + 1) {
+          logger.error(s"Resetting, because seqNo $seqNo not equal lastSeqNo $lastSeqNo + 1!")
           UserView()
         } else {
           logger.debug(s"User with username $username added")
           replyTo ! Done
-          UserView(users + user, lastSeqNo + 1)
+          UserView(users + user, seqNo)
         }
 
       case (_, RemoveUser(username, seqNo, replyTo)) =>
-        if (seqNo <= lastSeqNo) {
-          logger.error(s"Resetting, because seqNo $seqNo less or equal lastSeqNo $lastSeqNo!")
+        if (seqNo != lastSeqNo + 1) {
+          logger.error(s"Resetting, because seqNo $seqNo not equal lastSeqNo $lastSeqNo + 1!")
           UserView()
         } else {
           logger.debug(s"User with username $username removed")
           replyTo ! Done
-          UserView(users.filterNot(_.username.value === username), lastSeqNo + 1)
+          UserView(users.filterNot(_.username.value === username), seqNo)
         }
     }
 

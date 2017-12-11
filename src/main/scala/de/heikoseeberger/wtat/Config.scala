@@ -26,4 +26,6 @@ object Config {
                                   maxBackoff: FiniteDuration)
 }
 
-final case class Config(api: Config.Api, userProjection: Config.UserProjection)
+final case class Config(useClusterBootstrap: Boolean,
+                        api: Config.Api,
+                        userProjection: Config.UserProjection)

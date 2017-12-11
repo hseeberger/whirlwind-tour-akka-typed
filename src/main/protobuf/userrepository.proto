@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+import "wtat.proto";
+
+package de.heikoseeberger.wtat.proto.userrepository;
+
+message AddUser {
+    User user = 1;
+    string replyTo = 2;
+}
+message UsernameTaken {
+    string username = 1;
+}
+message UserAdded {
+    User user = 1;
+}
+
+message RemoveUser {
+    string username = 1;
+    string replyTo = 2;
+}
+message UsernameUnknown {
+    string username = 1;
+}
+message UserRemoved {
+    string username = 1;
+}
