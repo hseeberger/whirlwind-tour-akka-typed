@@ -16,23 +16,50 @@
 
 package de.heikoseeberger.wtat
 
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.server.{ Directives, Route }
+import akka.typed.scaladsl.Actor
 import akka.stream.Materializer
 import akka.typed.Behavior
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
+import java.net.InetSocketAddress
 import org.apache.logging.log4j.scala.Logging
+import scala.util.{ Failure, Success }
 
 object Api extends Logging {
 
   sealed trait Command
+  private final case object HandleBindFailure                      extends Command
+  private final case class HandleBound(address: InetSocketAddress) extends Command
 
   final val Name = "api"
 
   def apply(address: String, port: Int)(implicit mat: Materializer): Behavior[Command] =
-    // - Call Http().bindAndHandle
-    // - Ingest the result by sending to be defined commands to self
-    // - Handle the ingested result
-    ???
+    Actor.deferred { context =>
+      import akka.typed.scaladsl.adapter._
+      import context.executionContext
+      implicit val s: ActorSystem = context.system.toUntyped
+
+      val self = context.self
+      Http()
+        .bindAndHandle(route, address, port)
+        .onComplete {
+          case Failure(_)                      => self ! HandleBindFailure
+          case Success(ServerBinding(address)) => self ! HandleBound(address)
+        }
+
+      Actor.immutable {
+        case (_, HandleBindFailure) =>
+          logger.error(s"Stopping, because cannot bind to $address:$port!")
+          Actor.stopped
+
+        case (_, HandleBound(address)) =>
+          logger.info(s"Bound to $address")
+          Actor.ignore
+      }
+    }
 
   def route: Route = {
     import Directives._
