@@ -42,10 +42,32 @@ object UserProjection extends Logging {
   def apply(readJournal: EventsByPersistenceIdQuery,
             userView: ActorRef[UserView.Command],
             askTimeout: FiniteDuration)(implicit mat: Materializer): Behavior[Command] =
-    // - Ask UserView for last seqNo
-    // - Use it to get event stream from readJournal
-    // - Transform EventEnvelope into UserRepository.Event
-    // - Ask UserView to add or remove user, respectively
-    // - Run stream, what to do on completion?
-    ???
+    Actor.deferred { context =>
+      implicit val s: Scheduler = context.system.scheduler
+      implicit val t: Timeout   = askTimeout
+      val self                  = context.self
+
+      Source
+        .fromFuture(userView ? UserView.GetLastSeqNo)
+        .flatMapConcat {
+          case UserView.LastSeqNo(lastSeqNo) =>
+            readJournal.eventsByPersistenceId(UserRepository.Name, lastSeqNo + 1, Long.MaxValue)
+        }
+        .collect {
+          case EventEnvelope(_, _, seqNo, event: UserRepository.Event) => (seqNo, event)
+        }
+        .mapAsync(1) {
+          case (seqNo, UserRepository.UserAdded(user)) =>
+            userView ? UserView.addUser(user, seqNo)
+
+          case (seqNo, UserRepository.UserRemoved(username)) =>
+            userView ? UserView.removeUser(username, seqNo)
+        }
+        .runWith(Sink.onComplete(_ => self ! HandleEventStreamComplete))
+      logger.debug("Running event stream")
+
+      Actor.immutable {
+        case (_, HandleEventStreamComplete) => throw EventStreamCompleteException
+      }
+    }
 }
