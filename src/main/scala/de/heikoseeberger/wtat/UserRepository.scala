@@ -19,6 +19,7 @@ package de.heikoseeberger.wtat
 import akka.typed.persistence.scaladsl.PersistentActor
 import akka.typed.persistence.scaladsl.PersistentActor.{ CommandHandler, Effect }
 import akka.typed.{ ActorRef, Behavior }
+import eu.timepit.refined.api.Refined
 import org.apache.logging.log4j.scala.Logging
 
 object UserRepository extends Logging {
@@ -51,11 +52,40 @@ object UserRepository extends Logging {
 
   private def commandHandler =
     CommandHandler[Command, Event, State] {
-      // Handle (_, State(usernames), AddUser(...)
-      // Handle (_, State(usernames), RemoveUser(...)
-      ???
+      case (_, State(usernames), AddUser(user @ User(Refined(username), _), replyTo)) =>
+        if (usernames.contains(username)) {
+          logger.info(s"Username $username taken")
+          replyTo ! UsernameTaken(username)
+          Effect.none
+        } else {
+          val userAdded = UserAdded(user)
+          Effect
+            .persist(userAdded)
+            .andThen { _ =>
+              logger.info(s"User with username $username added")
+              replyTo ! userAdded
+            }
+        }
+
+      case (_, State(usernames), RemoveUser(username, replyTo)) =>
+        if (!usernames.contains(username)) {
+          logger.info(s"Username $username unknown")
+          replyTo ! UsernameUnknown(username)
+          Effect.none
+        } else {
+          val userRemoved = UserRemoved(username)
+          Effect
+            .persist(userRemoved)
+            .andThen { _ =>
+              logger.info(s"User with username $username removed")
+              replyTo ! userRemoved
+            }
+        }
     }
 
   private def eventHandler(state: State, event: Event) =
-    ???
+    event match {
+      case UserAdded(user)       => state.copy(state.usernames + user.username.value)
+      case UserRemoved(username) => state.copy(state.usernames - username)
+    }
 }
