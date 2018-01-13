@@ -16,10 +16,10 @@
 
 package de.heikoseeberger.wtat
 
+import akka.actor.typed.scaladsl.Actor
+import akka.actor.typed.{ ActorRef, Behavior }
 import akka.cluster.ddata.ORSet
-import akka.typed.cluster.ddata.scaladsl.{ DistributedData, Replicator }
-import akka.typed.scaladsl.Actor
-import akka.typed.{ ActorRef, Behavior }
+import akka.cluster.ddata.typed.scaladsl.{ DistributedData, Replicator }
 import org.apache.logging.log4j.scala.Logging
 
 object UserView extends Logging {

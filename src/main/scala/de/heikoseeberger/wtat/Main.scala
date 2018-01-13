@@ -17,21 +17,21 @@
 package de.heikoseeberger.wtat
 
 import akka.actor.{ Actor, ActorLogging, ActorSystem, Props, Terminated }
+import akka.actor.typed.SupervisorStrategy.restartWithBackoff
+import akka.actor.typed.scaladsl.Actor.supervise
 import akka.cluster.Cluster
 import akka.cluster.bootstrap.ClusterBootstrap
 import akka.cluster.http.management.ClusterHttpManagement
+import akka.cluster.typed.{ ClusterSingleton, ClusterSingletonSettings }
 import akka.persistence.cassandra.query.scaladsl.CassandraReadJournal
 import akka.persistence.query.PersistenceQuery
 import akka.stream.{ ActorMaterializer, Materializer }
-import akka.typed.SupervisorStrategy.restartWithBackoff
-import akka.typed.cluster.{ ClusterSingleton, ClusterSingletonSettings }
-import akka.typed.scaladsl.Actor.supervise
 import pureconfig.loadConfigOrThrow
 
 object Main {
+  import akka.actor.typed.scaladsl.adapter._
 
   final class Root(config: Config) extends Actor with ActorLogging {
-    import akka.typed.scaladsl.adapter._
 
     private implicit val mat: Materializer = ActorMaterializer()
 
@@ -40,7 +40,7 @@ object Main {
     private val userRepository =
       ClusterSingleton(context.system.toTyped).spawn(UserRepository(),
                                                      UserRepository.Name,
-                                                     akka.typed.Props.empty,
+                                                     akka.actor.typed.Props.empty,
                                                      clusterSingletonSettings,
                                                      UserRepository.Stop)
 
@@ -58,7 +58,7 @@ object Main {
           )
       ClusterSingleton(context.system.toTyped).spawn(userProjection,
                                                      UserProjection.Name,
-                                                     akka.typed.Props.empty,
+                                                     akka.actor.typed.Props.empty,
                                                      clusterSingletonSettings,
                                                      UserProjection.Stop)
     }

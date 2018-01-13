@@ -9,7 +9,7 @@ lazy val `whirlwind-tour-akka-typed` =
     .settings(settings)
     .settings(
       libraryDependencies ++= Seq(
-        library.akkaClusterSharding,
+        library.akkaClusterShardingTyped,
         library.akkaClusterTools,
         library.akkaDistributedData,
         library.akkaHttp,
@@ -20,7 +20,7 @@ lazy val `whirlwind-tour-akka-typed` =
         library.akkaPersistence,
         library.akkaPersistenceCassandra,
         library.akkaPersistenceQuery,
-        library.akkaTyped,
+        library.akkaPersistenceTyped,
         library.catsCore,
         library.circeGeneric,
         library.circeRefined,
@@ -33,7 +33,7 @@ lazy val `whirlwind-tour-akka-typed` =
         library.scalapbRuntime   % "protobuf",
         library.akkaHttpTestkit  % Test,
         library.akkaTestkit      % Test,
-        library.akkaTypedTestkit % Test,
+        library.akkaTestkitTyped % Test,
         library.scalaCheck       % Test,
         library.scalaTest        % Test
       )
@@ -46,7 +46,7 @@ lazy val `whirlwind-tour-akka-typed` =
 lazy val library =
   new {
     object Version {
-      val akka                     = "2.5.8"
+      val akka                     = "2.5.9"
       val akkaHttp                 = "10.0.11"
       val akkaHttpJson             = "1.19.0"
       val akkaLog4j                = "1.6.0"
@@ -63,7 +63,7 @@ lazy val library =
       val scalaTest                = "3.0.4"
       val scalapb                  = com.trueaccord.scalapb.compiler.Version.scalapbVersion
     }
-    val akkaClusterSharding      = "com.typesafe.akka"        %% "akka-cluster-sharding"        % Version.akka
+    val akkaClusterShardingTyped = "com.typesafe.akka"        %% "akka-cluster-sharding-typed"  % Version.akka
     val akkaClusterTools         = "com.typesafe.akka"        %% "akka-cluster-tools"           % Version.akka
     val akkaDistributedData      = "com.typesafe.akka"        %% "akka-distributed-data"        % Version.akka
     val akkaHttp                 = "com.typesafe.akka"        %% "akka-http"                    % Version.akkaHttp
@@ -76,8 +76,8 @@ lazy val library =
     val akkaPersistenceQuery     = "com.typesafe.akka"        %% "akka-persistence-query"       % Version.akka
     val akkaStream               = "com.typesafe.akka"        %% "akka-stream"                  % Version.akka
     val akkaTestkit              = "com.typesafe.akka"        %% "akka-testkit"                 % Version.akka
-    val akkaTyped                = "com.typesafe.akka"        %% "akka-typed"                   % Version.akka
-    val akkaTypedTestkit         = "com.typesafe.akka"        %% "akka-typed-testkit"           % Version.akka
+    val akkaPersistenceTyped     = "com.typesafe.akka"        %% "akka-persistence-typed"       % Version.akka
+    val akkaTestkitTyped         = "com.typesafe.akka"        %% "akka-testkit-typed"           % Version.akka
     val catsCore                 = "org.typelevel"            %% "cats-core"                    % Version.cats
     val circeGeneric             = "io.circe"                 %% "circe-generic"                % Version.circe
     val circeRefined             = "io.circe"                 %% "circe-refined"                % Version.circe

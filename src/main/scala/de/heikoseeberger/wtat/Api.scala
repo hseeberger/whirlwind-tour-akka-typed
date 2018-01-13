@@ -22,9 +22,9 @@ import akka.http.scaladsl.Http.ServerBinding
 import akka.http.scaladsl.model.StatusCodes.{ Conflict, Created, NoContent, NotFound }
 import akka.http.scaladsl.server.{ Directives, Route }
 import akka.stream.Materializer
-import akka.typed.scaladsl.Actor
-import akka.typed.scaladsl.AskPattern.Askable
-import akka.typed.{ ActorRef, Behavior }
+import akka.actor.typed.scaladsl.Actor
+import akka.actor.typed.scaladsl.AskPattern.Askable
+import akka.actor.typed.{ ActorRef, Behavior }
 import akka.util.Timeout
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import java.net.InetSocketAddress
@@ -46,7 +46,7 @@ object Api extends Logging {
             userView: ActorRef[UserView.Command],
             askTimeout: FiniteDuration)(implicit mat: Materializer): Behavior[Command] =
     Actor.deferred { context =>
-      import akka.typed.scaladsl.adapter._
+      import akka.actor.typed.scaladsl.adapter._
       import context.executionContext
       implicit val s: ActorSystem = context.system.toUntyped
 

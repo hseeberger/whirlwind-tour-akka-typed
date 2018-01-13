@@ -16,9 +16,9 @@
 
 package de.heikoseeberger.wtat
 
-import akka.typed.persistence.scaladsl.PersistentActor
-import akka.typed.persistence.scaladsl.PersistentActor.{ CommandHandler, Effect }
-import akka.typed.{ ActorRef, Behavior }
+import akka.actor.typed.{ ActorRef, Behavior }
+import akka.persistence.typed.scaladsl.PersistentActor
+import akka.persistence.typed.scaladsl.PersistentActor.{ CommandHandler, Effect }
 import eu.timepit.refined.api.Refined
 import java.io.{ Serializable => JavaSerializable }
 import org.apache.logging.log4j.scala.Logging

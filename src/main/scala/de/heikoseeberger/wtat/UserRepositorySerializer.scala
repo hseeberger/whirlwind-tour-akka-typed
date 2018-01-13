@@ -17,9 +17,8 @@
 package de.heikoseeberger.wtat
 
 import akka.actor.ExtendedActorSystem
+import akka.actor.typed.{ ActorRef, ActorRefResolver }
 import akka.serialization.SerializerWithStringManifest
-import akka.typed.ActorRef
-import akka.typed.cluster.ActorRefResolver
 import de.heikoseeberger.wtat.proto.userrepository.{
   AddUser => AddUserProto,
   RemoveUser => RemoveUserProto,
@@ -34,7 +33,7 @@ import java.io.NotSerializableException
 final class UserRepositorySerializer(system: ExtendedActorSystem)
     extends SerializerWithStringManifest {
   import UserRepository._
-  import akka.typed.scaladsl.adapter._
+  import akka.actor.typed.scaladsl.adapter._
 
   override val identifier = 4243
 

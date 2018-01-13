@@ -17,17 +17,17 @@
 package de.heikoseeberger.wtat
 
 import akka.actor.Scheduler
+import akka.actor.typed.{ ActorRef, Behavior }
+import akka.actor.typed.scaladsl.Actor
+import akka.actor.typed.scaladsl.AskPattern.Askable
 import akka.cluster.Cluster
-import akka.cluster.ddata.Replicator.WriteLocal
 import akka.cluster.ddata.{ ORSet, ORSetKey }
+import akka.cluster.ddata.Replicator.WriteLocal
+import akka.cluster.ddata.typed.scaladsl.{ DistributedData, Replicator }
 import akka.persistence.query.EventEnvelope
 import akka.persistence.query.scaladsl.EventsByPersistenceIdQuery
 import akka.stream.Materializer
 import akka.stream.scaladsl.Sink
-import akka.typed.cluster.ddata.scaladsl.{ DistributedData, Replicator }
-import akka.typed.scaladsl.Actor
-import akka.typed.scaladsl.AskPattern.Askable
-import akka.typed.{ ActorRef, Behavior }
 import akka.util.Timeout
 import cats.instances.string._
 import cats.syntax.eq._
@@ -35,7 +35,7 @@ import org.apache.logging.log4j.scala.Logging
 import scala.concurrent.duration.FiniteDuration
 
 object UserProjection extends Logging {
-  import akka.typed.scaladsl.adapter._
+  import akka.actor.typed.scaladsl.adapter._
 
   sealed trait Command
   final case object Stop                              extends Command
